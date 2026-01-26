@@ -4,7 +4,6 @@ resources:
   - service.yaml
   - hpa.yaml
   - servicemonitor.yaml
-
 images:
   - name: eurival/importador
     newTag: latest
