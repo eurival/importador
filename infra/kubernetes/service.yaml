@@ -1,15 +1,15 @@
-apiVersion: v1
-kind: Service
-metadata:
-  name: importador-service
-  namespace: gedtotal-apps
-  labels:
-    app: importador-service
-spec:
-  type: ClusterIP
-  selector:
-    app: importador-service
-  ports:
-    - name: http
-      port: 8080
-      targetPort: 8080
+  apiVersion: v1
+  kind: Service
+  metadata:
+    name: importador-service
+    namespace: gedtotal-apps
+    labels:
+      app: importador-service
+  spec:
+    type: ClusterIP
+    selector:
+      app: importador
+    ports:
+      - name: http
+        port: 8080
+        targetPort: 8080
