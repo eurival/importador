@@ -11,7 +11,7 @@ spec:
       - gedtotal-apps
   selector:
     matchLabels:
-      app: importador-service
+      app: importador
   endpoints:
     - port: http
       path: /actuator/prometheus
