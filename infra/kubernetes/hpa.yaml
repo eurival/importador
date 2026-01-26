@@ -8,8 +8,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: importador-deployment
-  minReplicas: 0
-  maxReplicas: 3
+  minReplicas: 1
+  maxReplicas: 5
   metrics:
     - type: Resource
       resource:
