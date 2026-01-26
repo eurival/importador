@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: importador-deployment
+  namespace: gedtotal-apps
+  labels:
+    app: importador
+spec:
+  replicas: 1 # Comece com 1 para testar, depois escale se precisar
+  selector:
+    matchLabels:
+      app: importador
+  template:
+    metadata:
+      labels:
+        app: importador
+    spec:
+      containers:
+      - name: importador
+        # --- AJUSTE A IMAGEM ABAIXO ---
+        image: docker.io/eurival/importador:latest 
+        imagePullPolicy: Always
+        
+        # Carrega todas as variáveis do ConfigMap como variáveis de ambiente
+        envFrom:
+        - configMapRef:
+            name: importador-config
+            
+        # Variáveis extras ou sobrescritas
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "prod"
+        - name: _JAVA_OPTIONS
+          value: "-Duser.timezone=America/Sao_Paulo -XX:MaxRAMPercentage=75.0"
+
+        # Resources (ajuste conforme o consumo do seu worker)
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "1"
+            
+        # Health Checks (Se tiver actuator, descomente e ajuste)
+      livenessProbe:
+        httpGet:
+        path: /actuator/health/liveness
+        port: 8080
+        initialDelaySeconds: 60

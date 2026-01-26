@@ -7,9 +7,12 @@ import br.com.arquivototal.gedtotalapi.grpc.ImportarIndiceRequest;
 import br.com.arquivototal.gedtotalapi.grpc.ImportarIndiceResponse;
 import br.com.arquivototal.gedtotalapi.grpc.LegacyIndice;
 import br.com.arquivototal.importador.grpc.ImportacaoGedGrpcClient;
- 
- 
+
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,42 +33,78 @@ public class ImportacaoKafkaConsumer {
     private final ObjectMapper objectMapper;
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final String topicFalhas;
+    private final Counter mensagensRecebidas;
+    private final Counter mensagensInvalidas;
+    private final Counter importacoesProcessadas;
+    private final Counter importacoesSucesso;
+    private final Counter importacoesJaExiste;
+    private final Counter importacoesErro;
+    private final Counter falhasPublicadas;
+    private final Timer importacaoTimer;
+    private final AtomicInteger emProcessamento;
 
     public ImportacaoKafkaConsumer(
         ImportacaoGedGrpcClient grpcClient,
         ObjectMapper objectMapper,
         KafkaTemplate<String, String> kafkaTemplate,
-        @Value("${importacao.kafka.topic.falhas}") String topicFalhas
+        @Value("${importacao.kafka.topic.falhas}") String topicFalhas,
+        MeterRegistry meterRegistry
     ) {
         this.grpcClient = grpcClient;
         this.objectMapper = objectMapper;
         this.kafkaTemplate = kafkaTemplate;
         this.topicFalhas = topicFalhas;
+        this.mensagensRecebidas = meterRegistry.counter("importador.kafka.mensagens.recebidas");
+        this.mensagensInvalidas = meterRegistry.counter("importador.kafka.mensagens.invalidas");
+        this.importacoesProcessadas = meterRegistry.counter("importador.importacao.processadas");
+        this.importacoesSucesso = meterRegistry.counter("importador.importacao.sucesso");
+        this.importacoesJaExiste = meterRegistry.counter("importador.importacao.ja_existe");
+        this.importacoesErro = meterRegistry.counter("importador.importacao.erro");
+        this.falhasPublicadas = meterRegistry.counter("importador.importacao.falhas_publicadas");
+        this.importacaoTimer = meterRegistry.timer("importador.importacao.tempo");
+        this.emProcessamento = new AtomicInteger(0);
+        meterRegistry.gauge("importador.importacao.em_processamento", this.emProcessamento);
     }
 
     @KafkaListener(topics = "${importacao.kafka.topic.solicitacoes}")
     public void consumir(String mensagem, Acknowledgment acknowledgment) {
+        mensagensRecebidas.increment();
+        emProcessamento.incrementAndGet();
+        Timer.Sample sample = Timer.start();
         ImportacaoPayload payload;
         try {
             payload = objectMapper.readValue(mensagem, ImportacaoPayload.class);
         } catch (Exception e) {
             log.error("Falha ao desserializar mensagem de importacao: {}", e.getMessage(), e);
+            mensagensInvalidas.increment();
             publicarFalha(null, "Payload invalido: " + e.getMessage(), null);
             acknowledgment.acknowledge();
+            sample.stop(importacaoTimer);
+            emProcessamento.decrementAndGet();
             return;
         }
 
         try {
             ImportarIndiceRequest request = montarRequest(payload);
             ImportarIndiceResponse response = grpcClient.importarIndice(request);
-            if (response.getStatus() == ImportacaoStatus.ERRO) {
+            importacoesProcessadas.increment();
+            if (response.getStatus() == ImportacaoStatus.IMPORTADO) {
+                importacoesSucesso.increment();
+            } else if (response.getStatus() == ImportacaoStatus.JA_EXISTE) {
+                importacoesJaExiste.increment();
+            } else {
+                importacoesErro.increment();
                 publicarFalha(payload, response.getMensagem(), payload.correlationId());
             }
             acknowledgment.acknowledge();
         } catch (Exception e) {
             log.error("Erro ao processar importacao: {}", e.getMessage(), e);
+            importacoesErro.increment();
             publicarFalha(payload, e.getMessage(), payload != null ? payload.correlationId() : null);
             acknowledgment.acknowledge();
+        } finally {
+            sample.stop(importacaoTimer);
+            emProcessamento.decrementAndGet();
         }
     }
 
@@ -175,6 +214,7 @@ public class ImportacaoKafkaConsumer {
             }
             String body = objectMapper.writeValueAsString(envelope);
             kafkaTemplate.send(new ProducerRecord<>(topicFalhas, Long.toString(idIndice), body));
+            falhasPublicadas.increment();
         } catch (Exception e) {
             log.error("Falha ao publicar erro no topico de falhas: {}", e.getMessage(), e);
         }

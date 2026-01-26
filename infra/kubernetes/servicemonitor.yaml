@@ -1,0 +1,21 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: importador-service-sm
+  namespace: gedtotal-apps
+  labels:
+    release: prometheus
+spec:
+  namespaceSelector:
+    matchNames:
+      - gedtotal-apps
+  selector:
+    matchLabels:
+      app: importador-service
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 15s
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_service_label_app]
+          targetLabel: application

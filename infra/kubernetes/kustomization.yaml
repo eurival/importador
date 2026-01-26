@@ -1,0 +1,10 @@
+resources:
+  - importador-configmap.yaml
+  - importador-deployment.yaml
+  - service.yaml
+  - hpa.yaml
+  - servicemonitor.yaml
+
+images:
+  - name: eurival/importador
+    newTag: latest

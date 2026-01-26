@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: importador-config
+  namespace: gedtotal-apps
+  labels:
+    app: importador
+data:
+  # --- CONEXÃO GRPC (SERVICE DISCOVERY) ---
+  # Nome exato que apareceu no seu 'kubectl get svc'
+  IMPORTACAO_GRPC_HOST: "gedtotalapi-service" 
+  IMPORTACAO_GRPC_PORT: "9090"
+
+  # --- KAFKA ---
+  KAFKA_BOOTSTRAP_SERVERS: "15.229.173.87:19092"
+  
+  # Tópicos
+  IMPORTACAO_KAFKA_TOPIC_SOLICITACOES: "ged.importacao.solicitacoes"
+  IMPORTACAO_KAFKA_TOPIC_FALHAS: "ged.importacao.falhas"
+  
+  # --- CONSUMER TUNING ---
+  SPRING_KAFKA_CONSUMER_GROUP_ID: "importacao-ged-k8s-prod"
+  SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET: "earliest"
+  SPRING_KAFKA_CONSUMER_MAX_POLL_RECORDS: "5"
+  SPRING_KAFKA_CONSUMER_ENABLE_AUTO_COMMIT: "false"
+  SPRING_KAFKA_CONSUMER_MAX_POLL_INTERVAL_MS: "1800000" # 30 minutos
+  SPRING_KAFKA_CONSUMER_FETCH_MAX_BYTES: "1048576"
