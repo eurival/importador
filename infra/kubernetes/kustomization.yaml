@@ -4,10 +4,9 @@ kind: Kustomization
 resources:
   - importador-config.yaml  
   - importador-deployment.yaml
-  - importador-service.yaml
-  - hpa.yaml (se tiver)
-  - servicemonitor.yaml (se tiver)
-
+  - service.yaml
+  - hpa.yaml
+  - servicemonitor.yaml
 images:
   - name: docker.io/eurival/importador 
     newName: docker.io/eurival/importador  
