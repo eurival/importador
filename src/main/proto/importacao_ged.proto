@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package br.com.arquivototal.gedtotalapi.grpc;
+
+option java_package = "br.com.arquivototal.gedtotalapi.grpc";
+option java_multiple_files = true;
+
+service ImportacaoGedService {
+    rpc ImportarIndice(ImportarIndiceRequest) returns (ImportarIndiceResponse);
+    rpc ImportarIndices(stream ImportarIndiceRequest) returns (ImportarIndiceBatchResponse);
+}
+
+message ImportarIndiceRequest {
+    LegacyIndice legacy = 1;
+    int64 clienteId = 2;
+    int64 departamentoId = 3;
+    int64 projetoId = 4;
+    int64 formularioId = 5;
+    int64 loteId = 6;
+    int64 usuarioId = 7;
+    repeated FormDataItem formData = 8;
+    string baseMountPath = 9;
+    string correlationId = 10;
+}
+
+message LegacyIndice {
+    int64 idIndice = 1;
+    int64 idProjeto = 2;
+    map<string, string> campos = 3;
+    string arquivo = 4;
+    int32 npaginas = 5;
+    double tamanho = 6;
+    int32 idUsuarioCreate = 7;
+    string ocr = 8;
+    string lote = 9;
+    string dataPublicacao = 10;
+    string horaPublicacao = 11;
+    string ext = 12;
+    int32 ocrStatus = 13;
+    string storage = 14;
+}
+
+message FormDataItem {
+    int64 campoId = 1;
+    string valor = 2;
+}
+
+message ImportarIndiceResponse {
+    ImportacaoStatus status = 1;
+    string mensagem = 2;
+    int64 masterId = 3;
+}
+
+message ImportarIndiceBatchResponse {
+    int32 total = 1;
+    int32 sucesso = 2;
+    int32 falha = 3;
+    int32 jaExiste = 4;
+    repeated ImportacaoFalha falhas = 5;
+}
+
+message ImportacaoFalha {
+    int64 idIndice = 1;
+    string mensagem = 2;
+}
+
+enum ImportacaoStatus {
+    IMPORTACAO_STATUS_UNSPECIFIED = 0;
+    IMPORTADO = 1;
+    JA_EXISTE = 2;
+    ERRO = 3;
+}
