@@ -16,4 +16,22 @@ spec:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 85
+          averageUtilization: 80 # Baixei um pouco para ter margem
+  
+  # --- AQUI ESTÁ A MÁGICA ---
+  behavior:
+    scaleDown:
+      # Espere 5 minutos (300s) com o uso baixo antes de começar a matar pods.
+      # Isso evita que ele mate pods logo após o pico de inicialização passar.
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+    scaleUp:
+      # Se precisar subir, reaja rápido (0s), mas...
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Pods
+        value: 2       # ...só suba no máximo 2 pods a cada 15 segundos.
+        periodSeconds: 15 # Isso evita pular de 5 para 10 de uma vez num soluço.
