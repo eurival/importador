@@ -14,8 +14,11 @@ spec:
       app: importador-service
   endpoints:
     - port: http
-      path: /actuator/prometheus
+      # CORREÇÃO: Mudamos de /actuator para /management
+      path: /management/prometheus 
       interval: 15s
       relabelings:
+        # Isso cria a label "application" no Prometheus baseada no nome do Service.
+        # Útil para filtrar, mas lembre-se que seu Java já manda uma tag "application=importador"
         - sourceLabels: [__meta_kubernetes_service_label_app]
           targetLabel: application

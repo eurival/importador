@@ -7,6 +7,7 @@ import br.com.arquivototal.gedtotalapi.grpc.ImportarIndiceRequest;
 import br.com.arquivototal.gedtotalapi.grpc.ImportarIndiceResponse;
 import br.com.arquivototal.gedtotalapi.grpc.LegacyIndice;
 import br.com.arquivototal.importador.grpc.ImportacaoGedGrpcClient;
+ 
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -33,12 +34,15 @@ public class ImportacaoKafkaConsumer {
     private final ObjectMapper objectMapper;
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final String topicFalhas;
+    private final MeterRegistry meterRegistry; // Registry injetado
+
+    // Contadores Estáticos
     private final Counter mensagensRecebidas;
     private final Counter mensagensInvalidas;
     private final Counter importacoesProcessadas;
     private final Counter importacoesSucesso;
     private final Counter importacoesJaExiste;
-    private final Counter importacoesErro;
+    // NOTA: importacoesErro foi removido daqui para ser dinâmico
     private final Counter falhasPublicadas;
     private final Timer importacaoTimer;
     private final AtomicInteger emProcessamento;
@@ -54,12 +58,13 @@ public class ImportacaoKafkaConsumer {
         this.objectMapper = objectMapper;
         this.kafkaTemplate = kafkaTemplate;
         this.topicFalhas = topicFalhas;
+        this.meterRegistry = meterRegistry;
+
         this.mensagensRecebidas = meterRegistry.counter("importador.kafka.mensagens.recebidas");
         this.mensagensInvalidas = meterRegistry.counter("importador.kafka.mensagens.invalidas");
         this.importacoesProcessadas = meterRegistry.counter("importador.importacao.processadas");
         this.importacoesSucesso = meterRegistry.counter("importador.importacao.sucesso");
         this.importacoesJaExiste = meterRegistry.counter("importador.importacao.ja_existe");
-        this.importacoesErro = meterRegistry.counter("importador.importacao.erro");
         this.falhasPublicadas = meterRegistry.counter("importador.importacao.falhas_publicadas");
         this.importacaoTimer = meterRegistry.timer("importador.importacao.tempo");
         this.emProcessamento = new AtomicInteger(0);
@@ -71,12 +76,17 @@ public class ImportacaoKafkaConsumer {
         mensagensRecebidas.increment();
         emProcessamento.incrementAndGet();
         Timer.Sample sample = Timer.start();
-        ImportacaoPayload payload;
+        ImportacaoPayload payload = null;
+        
         try {
             payload = objectMapper.readValue(mensagem, ImportacaoPayload.class);
         } catch (Exception e) {
             log.error("Falha ao desserializar mensagem de importacao: {}", e.getMessage(), e);
             mensagensInvalidas.increment();
+            
+            // Registra erro de JSON/Parse
+            incrementarErro("desserializacao", e.getClass().getSimpleName());
+            
             publicarFalha(null, "Payload invalido: " + e.getMessage(), null);
             acknowledgment.acknowledge();
             sample.stop(importacaoTimer);
@@ -88,18 +98,27 @@ public class ImportacaoKafkaConsumer {
             ImportarIndiceRequest request = montarRequest(payload);
             ImportarIndiceResponse response = grpcClient.importarIndice(request);
             importacoesProcessadas.increment();
+
             if (response.getStatus() == ImportacaoStatus.IMPORTADO) {
                 importacoesSucesso.increment();
             } else if (response.getStatus() == ImportacaoStatus.JA_EXISTE) {
+                // JA_EXISTE não é erro, é um estado válido de negócio
                 importacoesJaExiste.increment();
             } else {
-                importacoesErro.increment();
+                // Erro de Negócio vindo do gRPC (ex: Validação falhou)
+                String erroNegocio = response.getMensagem();
+                incrementarErro("negocio", erroNegocio); 
+                
                 publicarFalha(payload, response.getMensagem(), payload.correlationId());
             }
             acknowledgment.acknowledge();
+
         } catch (Exception e) {
             log.error("Erro ao processar importacao: {}", e.getMessage(), e);
-            importacoesErro.increment();
+            
+            // Erro técnico (NullPointer, Banco fora, etc)
+            incrementarErro("processamento", e.getClass().getSimpleName());
+            
             publicarFalha(payload, e.getMessage(), payload != null ? payload.correlationId() : null);
             acknowledgment.acknowledge();
         } finally {
@@ -107,6 +126,25 @@ public class ImportacaoKafkaConsumer {
             emProcessamento.decrementAndGet();
         }
     }
+
+    /**
+     * Incrementa o contador de erros com tags dinâmicas.
+     */
+    private void incrementarErro(String tipo, String detalhe) {
+        String detalheSeguro = "desconhecido";
+        
+        if (detalhe != null) {
+            // TRUNCAR para evitar erros gigantes que explodem a memória do Prometheus
+            detalheSeguro = detalhe.length() > 64 ? detalhe.substring(0, 64) : detalhe;
+        }
+
+        meterRegistry.counter("importador.importacao.erro",
+            "tipo", tipo,
+            "erro", detalheSeguro
+        ).increment();
+    }
+
+    // --- MÉTODOS ORIGINAIS (Mantidos iguais) ---
 
     private ImportarIndiceRequest montarRequest(ImportacaoPayload payload) {
         ImportarIndiceRequest.Builder builder = ImportarIndiceRequest.newBuilder();
