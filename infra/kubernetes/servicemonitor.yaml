@@ -15,7 +15,7 @@ spec:
   endpoints:
     - port: http
       # CORREÇÃO: Mudamos de /actuator para /management
-      path: /management/prometheus 
+      path: /actuator/prometheus
       interval: 15s
       relabelings:
         # Isso cria a label "application" no Prometheus baseada no nome do Service.
