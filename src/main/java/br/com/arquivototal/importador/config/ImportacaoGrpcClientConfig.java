@@ -15,7 +15,11 @@ public class ImportacaoGrpcClientConfig {
         @Value("${importacao.grpc.host}") String host,
         @Value("${importacao.grpc.port}") int port
     ) {
-        return ManagedChannelBuilder.forAddress(host, port).usePlaintext().build();
+        // Se o host vier como "dns:///...", o gRPC usará o NameResolver nativo
+        return ManagedChannelBuilder.forTarget(host + ":" + port)
+            .defaultLoadBalancingPolicy("round_robin") 
+            .usePlaintext()
+            .build();
     }
 
     @Bean

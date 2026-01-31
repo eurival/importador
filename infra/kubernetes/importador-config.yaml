@@ -7,8 +7,9 @@ metadata:
     app: importador
 data:
   # --- CONEXÃO GRPC (SERVICE DISCOVERY) ---
+  GRPC_CLIENT_GEDTOTAL_ADDRESS: "dns:///gedtotalapi-service.gedtotal-apps.svc.cluster.local:9090"
   # Nome exato que apareceu no seu 'kubectl get svc'
-  IMPORTACAO_GRPC_HOST: "gedtotalapi-service" 
+  IMPORTACAO_GRPC_HOST: "dns:///gedtotalapi-service.gedtotal-apps.svc.cluster.local"
   IMPORTACAO_GRPC_PORT: "9090"
 
   # --- KAFKA ---
