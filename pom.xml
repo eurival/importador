@@ -11,7 +11,7 @@
 	</parent>
 	<groupId>br.com.arquivototal</groupId>
 	<artifactId>importador</artifactId>
-	<version>1.0.5</version>
+	<version>1.0.6</version>
 	<name>importador</name>
 	<description>Importador - Ged/GedTotal</description>
 	<url/>
