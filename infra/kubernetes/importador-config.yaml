@@ -6,23 +6,21 @@ metadata:
   labels:
     app: importador
 data:
-  # --- CONEXÃO GRPC (SERVICE DISCOVERY) ---
-  GRPC_CLIENT_GEDTOTAL_ADDRESS: "dns:///gedtotalapi-service.gedtotal-apps.svc.cluster.local:9090"
-  # Nome exato que apareceu no seu 'kubectl get svc'
+  # --- CONEXÃO GRPC (O código usa IMPORTACAO_GRPC_HOST) ---
   IMPORTACAO_GRPC_HOST: "dns:///gedtotalapi-service.gedtotal-apps.svc.cluster.local"
   IMPORTACAO_GRPC_PORT: "9090"
 
-  # --- KAFKA ---
+  # --- KAFKA BOOTSTRAP ---
   KAFKA_BOOTSTRAP_SERVERS: "15.229.173.87:19092"
   
-  # Tópicos
+  # --- TÓPICOS ---
   IMPORTACAO_KAFKA_TOPIC_SOLICITACOES: "ged.importacao.solicitacoes"
   IMPORTACAO_KAFKA_TOPIC_FALHAS: "ged.importacao.falhas"
   
-  # --- CONSUMER TUNING ---
+  # --- CONSUMER TUNING (Sincronizado com suas metas de performance) ---
   SPRING_KAFKA_CONSUMER_GROUP_ID: "importacao-ged-k8s-prod-1"
   SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET: "earliest"
-  SPRING_KAFKA_CONSUMER_MAX_POLL_RECORDS: "5"
+  SPRING_KAFKA_CONSUMER_MAX_POLL_RECORDS: "20"            # Subi para 20 aproveitando o novo cache
   SPRING_KAFKA_CONSUMER_ENABLE_AUTO_COMMIT: "false"
-  SPRING_KAFKA_CONSUMER_MAX_POLL_INTERVAL_MS: "1800000" # 30 minutos
+  SPRING_KAFKA_CONSUMER_MAX_POLL_INTERVAL_MS: "1800000"
   SPRING_KAFKA_CONSUMER_FETCH_MAX_BYTES: "1048576"
