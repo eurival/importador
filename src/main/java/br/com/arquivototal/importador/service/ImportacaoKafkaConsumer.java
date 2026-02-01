@@ -66,7 +66,10 @@ public class ImportacaoKafkaConsumer {
         meterRegistry.gauge("importador.importacao.em_processamento", this.emProcessamento);
     }
 
-    @KafkaListener(topics = "${importacao.kafka.topic.solicitacoes}")
+    @KafkaListener(
+        topics = "${importacao.kafka.topic.solicitacoes}",
+        containerFactory = "kafkaListenerContainerFactory"  
+    )
     public void consumir(String mensagem, Acknowledgment acknowledgment) {
         mensagensRecebidas.increment();
         emProcessamento.incrementAndGet();
