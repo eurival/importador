@@ -9,4 +9,4 @@ resources:
 images:
   - name: docker.io/eurival/importador
     newName: docker.io/eurival/importador
-    newTag: 1.0.6
+    newTag: 1.0.7
